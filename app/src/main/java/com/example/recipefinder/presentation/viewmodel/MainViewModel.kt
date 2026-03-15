@@ -45,6 +45,10 @@ class MainViewModel(
         findRecipes()
     }
 
+    fun clearBasket() {
+        basket = emptyList()
+        findRecipes()
+    }
     fun removeIngredient(ingredient: Ingredient) {
 
         basket = basket - ingredient

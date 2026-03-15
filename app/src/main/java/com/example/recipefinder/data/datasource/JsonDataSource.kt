@@ -1,6 +1,7 @@
 package com.example.recipefinder.data.datasource
 
 import android.content.Context
+import com.example.recipefinder.domain.model.Difficulty
 import com.example.recipefinder.domain.model.Ingredient
 import com.example.recipefinder.domain.model.Recipe
 import org.json.JSONArray
@@ -37,34 +38,35 @@ class JsonDataSource(private val context: Context) {
     }
 
     fun loadRecipes(): List<Recipe> {
-
         val json = context.assets
             .open("recipes.json")
             .bufferedReader()
             .use { it.readText() }
 
         val array = JSONArray(json)
-
         val recipes = mutableListOf<Recipe>()
 
         for (i in 0 until array.length()) {
-
             val obj = array.getJSONObject(i)
 
-            val ingredientsArray = obj.getJSONArray("ingredients")
-
             val ingredients = mutableListOf<Int>()
-
+            val ingredientsArray = obj.getJSONArray("ingredients")
             for (j in 0 until ingredientsArray.length()) {
                 ingredients.add(ingredientsArray.getInt(j))
             }
 
-            val stepsArray = obj.getJSONArray("steps")
-
             val steps = mutableListOf<String>()
-
+            val stepsArray = obj.getJSONArray("steps")
             for (j in 0 until stepsArray.length()) {
                 steps.add(stepsArray.getString(j))
+            }
+
+            val difficultyStr = obj.getString("difficulty")
+            val difficulty = when (difficultyStr.lowercase()) {
+                "easy" -> Difficulty.EASY
+                "medium" -> Difficulty.MEDIUM
+                "hard" -> Difficulty.HARD
+                else -> Difficulty.EASY
             }
 
             recipes.add(
@@ -72,7 +74,9 @@ class JsonDataSource(private val context: Context) {
                     id = obj.getInt("id"),
                     name = obj.getString("name"),
                     ingredients = ingredients,
-                    steps = steps
+                    steps = steps,
+                    minutes = obj.getInt("minutes"),
+                    difficulty = difficulty
                 )
             )
         }

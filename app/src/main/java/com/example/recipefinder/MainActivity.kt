@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import com.example.recipefinder.data.datasource.JsonDataSource
 import com.example.recipefinder.data.repository.IngredientRepository
 import com.example.recipefinder.data.repository.RecipeRepository
+import com.example.recipefinder.domain.theme.MyApplicationTheme
 import com.example.recipefinder.domain.usecase.GetIngredientByIdUseCase
 import com.example.recipefinder.domain.usecase.GetRecommendedRecipesUseCase
 import com.example.recipefinder.domain.usecase.SearchIngredientsUseCase
@@ -37,7 +38,10 @@ class MainActivity : ComponentActivity() {
         )
 
         setContent {
-            AppNavigation(viewModel)
+            MyApplicationTheme {
+                AppNavigation(viewModel)
+            }
+
         }
     }
 }
