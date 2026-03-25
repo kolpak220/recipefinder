@@ -1,21 +1,14 @@
 package com.example.recipefinder.domain.usecase
 
-import com.example.recipefinder.data.repository.IngredientRepository
 import com.example.recipefinder.domain.model.Ingredient
+import com.example.recipefinder.domain.repository.IngredientRepository
+import kotlinx.coroutines.flow.Flow
+import javax.inject.Inject
 
-class SearchIngredientsUseCase(
+class SearchIngredientsUseCase @Inject constructor(
     private val repository: IngredientRepository
 ) {
-
-    fun execute(query: String): List<Ingredient> {
-
-        val ingredients = repository.getIngredients()
-
-        if (query.isBlank()) return emptyList()
-
-        return ingredients.filter {
-            it.name.contains(query, ignoreCase = true)
-        }
-
+    fun execute(query: String): Flow<List<Ingredient>> {
+        return repository.searchIngredients(query)
     }
 }

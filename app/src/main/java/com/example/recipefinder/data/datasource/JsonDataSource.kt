@@ -4,83 +4,62 @@ import android.content.Context
 import com.example.recipefinder.domain.model.Difficulty
 import com.example.recipefinder.domain.model.Ingredient
 import com.example.recipefinder.domain.model.Recipe
-import org.json.JSONArray
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+
+@Serializable
+data class SubstitutionJson(
+    val base_id: Int,
+    val substitutes: List<Int>
+)
 
 class JsonDataSource(private val context: Context) {
 
+    private val json = Json { ignoreUnknownKeys = true }
+
     fun loadIngredients(): List<Ingredient> {
-
-        val json = context.assets
-            .open("ingredients.json")
-            .bufferedReader()
-            .use { it.readText() }
-
-        val array = JSONArray(json)
-
-        val ingredients = mutableListOf<Ingredient>()
-
-        for (i in 0 until array.length()) {
-
-            val obj = array.getJSONObject(i)
-
-            ingredients.add(
-                Ingredient(
-                    id = obj.getInt("id"),
-                    name = obj.getString("name")
-                )
+        val jsonString = context.assets.open("ingredients.json").bufferedReader().use { it.readText() }
+        val array = Json.parseToJsonElement(jsonString).jsonArray
+        return array.map {
+            Ingredient(
+                id = it.jsonObject["id"]!!.jsonPrimitive.content.toInt(),
+                name = it.jsonObject["name"]!!.jsonPrimitive.content
             )
         }
-
-        return ingredients
     }
+
     fun getIngredientById(id: Int): Ingredient? {
         return loadIngredients().find { it.id == id }
     }
 
     fun loadRecipes(): List<Recipe> {
-        val json = context.assets
-            .open("recipes.json")
-            .bufferedReader()
-            .use { it.readText() }
-
-        val array = JSONArray(json)
-        val recipes = mutableListOf<Recipe>()
-
-        for (i in 0 until array.length()) {
-            val obj = array.getJSONObject(i)
-
-            val ingredients = mutableListOf<Int>()
-            val ingredientsArray = obj.getJSONArray("ingredients")
-            for (j in 0 until ingredientsArray.length()) {
-                ingredients.add(ingredientsArray.getInt(j))
-            }
-
-            val steps = mutableListOf<String>()
-            val stepsArray = obj.getJSONArray("steps")
-            for (j in 0 until stepsArray.length()) {
-                steps.add(stepsArray.getString(j))
-            }
-
-            val difficultyStr = obj.getString("difficulty")
-            val difficulty = when (difficultyStr.lowercase()) {
+        val jsonString = context.assets.open("recipes.json").bufferedReader().use { it.readText() }
+        val array = Json.parseToJsonElement(jsonString).jsonArray
+        return array.map {
+            val obj = it.jsonObject
+            val difficultyStr = obj["difficulty"]!!.jsonPrimitive.content.lowercase()
+            val difficulty = when (difficultyStr) {
                 "easy" -> Difficulty.EASY
                 "medium" -> Difficulty.MEDIUM
                 "hard" -> Difficulty.HARD
                 else -> Difficulty.EASY
             }
-
-            recipes.add(
-                Recipe(
-                    id = obj.getInt("id"),
-                    name = obj.getString("name"),
-                    ingredients = ingredients,
-                    steps = steps,
-                    minutes = obj.getInt("minutes"),
-                    difficulty = difficulty
-                )
+            Recipe(
+                id = obj["id"]!!.jsonPrimitive.content.toInt(),
+                name = obj["name"]!!.jsonPrimitive.content,
+                ingredients = obj["ingredients"]!!.jsonArray.map { it.jsonPrimitive.content.toInt() },
+                steps = obj["steps"]!!.jsonArray.map { it.jsonPrimitive.content },
+                minutes = obj["minutes"]!!.jsonPrimitive.content.toInt(),
+                difficulty = difficulty
             )
         }
+    }
 
-        return recipes
+    fun loadSubstitutions(): List<SubstitutionJson> {
+        val jsonString = context.assets.open("ingredient_mappings.json").bufferedReader().use { it.readText() }
+        return json.decodeFromString(jsonString)
     }
 }

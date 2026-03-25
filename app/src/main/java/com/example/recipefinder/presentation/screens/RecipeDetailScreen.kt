@@ -6,15 +6,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -30,7 +28,10 @@ fun RecipeDetailScreen(
     viewModel: MainViewModel,
     recipeId: Int
 ) {
-    val recipe = viewModel.recommendedRecipes.find { it.id == recipeId }
+    val searchResults by viewModel.recommendedRecipes.collectAsState()
+    val basket by viewModel.basket.collectAsState()
+    val result = searchResults.find { it.recipe.id == recipeId }
+    val recipe = result?.recipe
 
     if (recipe == null) {
         Box(
@@ -47,7 +48,6 @@ fun RecipeDetailScreen(
             .fillMaxSize()
             .padding(16.dp)
     ) {
-
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -60,9 +60,7 @@ fun RecipeDetailScreen(
                     modifier = Modifier.weight(1f)
                 )
 
-                IconButton(
-                    onClick = { navController.popBackStack() }
-                ) {
+                IconButton(onClick = { navController.popBackStack() }) {
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Закрыть",
@@ -72,10 +70,7 @@ fun RecipeDetailScreen(
             }
             Spacer(modifier = Modifier.height(8.dp))
 
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "${recipe.minutes} мин",
                     fontSize = 14.sp,
@@ -83,7 +78,7 @@ fun RecipeDetailScreen(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
 
-                val (difficultyText, difficultyColor) = when(recipe.difficulty) {
+                val (difficultyText, difficultyColor) = when (recipe.difficulty) {
                     Difficulty.EASY -> "Легко" to Color(0xFF4CAF50)
                     Difficulty.MEDIUM -> "Средне" to Color(0xFFFFC107)
                     Difficulty.HARD -> "Сложно" to Color(0xFFF44336)
@@ -107,12 +102,19 @@ fun RecipeDetailScreen(
             )
 
             Spacer(modifier = Modifier.height(8.dp))
-
         }
 
         items(recipe.ingredients) { ingredientId ->
-            val ingredientName = viewModel.getIngredientNameById(ingredientId)
-            val isInBasket = viewModel.basket.any { it.id == ingredientId }
+            var ingredientName by remember { mutableStateOf("Загрузка...") }
+            var isSubstituted by remember { mutableStateOf(false) }
+            val isInBasket = basket.any { it.id == ingredientId }
+
+            LaunchedEffect(ingredientId, basket) {
+                ingredientName = viewModel.getIngredientNameById(ingredientId)
+                isSubstituted = viewModel.getSubstituteInBasket(ingredientId) != null
+            }
+
+            val isAvailable = isInBasket || isSubstituted
 
             Card(
                 modifier = Modifier
@@ -124,20 +126,19 @@ fun RecipeDetailScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(6.dp)
                 ) {
-                    // Иконка перед ингредиентом
                     Box(
                         modifier = Modifier
                             .size(20.dp)
                             .background(
-                                color = if (isInBasket) Color(0x2032CD32) else Color(0x20FF0000),
+                                color = if (isAvailable) Color(0x2032CD32) else Color(0x20FF0000),
                                 shape = CircleShape
                             ),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = if (isInBasket) Icons.Default.Check else Icons.Default.Close,
+                            imageVector = if (isAvailable) Icons.Default.Check else Icons.Default.Close,
                             contentDescription = null,
-                            tint = if (isInBasket) Color.Green else Color.Red,
+                            tint = if (isAvailable) Color.Green else Color.Red,
                             modifier = Modifier.size(12.dp)
                         )
                     }
@@ -147,8 +148,8 @@ fun RecipeDetailScreen(
                     Text(
                         text = ingredientName,
                         fontSize = 14.sp,
-                        color = if (isInBasket) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant,
-                        textDecoration = if (isInBasket) null else TextDecoration.LineThrough
+                        color = if (isAvailable) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant,
+                        textDecoration = if (isAvailable) null else TextDecoration.LineThrough
                     )
                 }
             }
@@ -171,7 +172,6 @@ fun RecipeDetailScreen(
                     .fillMaxWidth()
                     .padding(vertical = 2.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.Transparent)
-
             ) {
                 Row(
                     verticalAlignment = Alignment.Top,
@@ -195,13 +195,13 @@ fun RecipeDetailScreen(
                     }
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    Text(text = step,
+                    Text(
+                        text = step,
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Normal),
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                    )
                 }
-
             }
         }
 

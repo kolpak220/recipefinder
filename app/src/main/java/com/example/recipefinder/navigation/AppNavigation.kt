@@ -1,6 +1,9 @@
 package com.example.recipefinder.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.*
 import com.example.recipefinder.presentation.screens.MainScreen
 import com.example.recipefinder.presentation.screens.RecipeDetailScreen
@@ -8,33 +11,29 @@ import com.example.recipefinder.presentation.screens.RecipesScreen
 import com.example.recipefinder.presentation.viewmodel.MainViewModel
 
 @Composable
-fun AppNavigation(viewModel: MainViewModel) {
-
+fun AppNavigation() {
     val navController = rememberNavController()
+    val viewModel: MainViewModel = hiltViewModel()
 
     NavHost(
         navController = navController,
-        startDestination = "main"
+        startDestination = Screen.Main.route
     ) {
-
-        composable("main") {
+        composable(Screen.Main.route) {
             MainScreen(navController, viewModel)
         }
 
-        composable("recipes") {
+        composable(Screen.Recipes.route) {
             RecipesScreen(navController, viewModel)
         }
 
-        composable("recipe_detail/{recipeId}") { backStackEntry ->
-
+        composable(Screen.RecipeDetail.route) { backStackEntry ->
             val recipeId = backStackEntry.arguments?.getString("recipeId")?.toInt() ?: 0
-
             RecipeDetailScreen(
                 navController = navController,
                 viewModel = viewModel,
                 recipeId = recipeId
             )
         }
-
     }
 }

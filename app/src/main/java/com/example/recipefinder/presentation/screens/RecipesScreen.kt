@@ -6,9 +6,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.recipefinder.navigation.Screen
 import com.example.recipefinder.presentation.viewmodel.MainViewModel
 
 @Composable
@@ -16,13 +19,13 @@ fun RecipesScreen(
     navController: NavController,
     viewModel: MainViewModel
 ) {
+    val recommendedRecipes by viewModel.recommendedRecipes.collectAsState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-
         Text(
             text = "Рекомендованные рецепты",
             style = MaterialTheme.typography.headlineMedium
@@ -31,24 +34,19 @@ fun RecipesScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         LazyColumn {
-
-            items(viewModel.recommendedRecipes) { recipe ->
-
+            items(recommendedRecipes) { result ->
+                val recipe = result.recipe
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 8.dp)
                         .clickable {
-
-                            navController.navigate("recipe_detail/${recipe.id}")
-
+                            navController.navigate(Screen.RecipeDetail.createRoute(recipe.id))
                         }
                 ) {
-
                     Column(
                         modifier = Modifier.padding(16.dp)
                     ) {
-
                         Text(
                             text = recipe.name,
                             style = MaterialTheme.typography.titleMedium
@@ -60,17 +58,11 @@ fun RecipesScreen(
                             text = "Ингредиентов: ${recipe.ingredients.size}"
                         )
                         Text(
-                            text = "Совпадение ингредиентов"
+                            text = "Совпадение: ${(result.matchScore * 100).toInt()}%"
                         )
-
                     }
-
                 }
-
             }
-
         }
-
     }
-
 }

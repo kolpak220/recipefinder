@@ -1,6 +1,7 @@
 package com.example.recipefinder.presentation.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,7 +15,6 @@ import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,7 +32,6 @@ import com.example.recipefinder.domain.model.Difficulty
 import com.example.recipefinder.presentation.viewmodel.MainViewModel
 import com.example.recipefinder.ui.PercentageCircle
 
-
 fun productSuffix(count: Int): String {
     val lastDigit = count % 10
     val lastTwoDigits = count % 100
@@ -44,13 +43,19 @@ fun productSuffix(count: Int): String {
         else -> "ов"
     }
 }
-@OptIn(ExperimentalMaterial3Api::class)
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun MainScreen(
     navController: NavController,
     viewModel: MainViewModel
 ) {
     var basketExpanded by remember { mutableStateOf(true) }
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val searchResults by viewModel.searchResults.collectAsState()
+    val basket by viewModel.basket.collectAsState()
+    val recommendedRecipes by viewModel.recommendedRecipes.collectAsState()
+    val aiEvaluations by viewModel.aiEvaluations.collectAsState()
 
     Column(
         modifier = Modifier
@@ -75,10 +80,9 @@ fun MainScreen(
         )
         Spacer(modifier = Modifier.height(6.dp))
 
-
         OutlinedTextField(
             shape = RoundedCornerShape(16.dp),
-            value = viewModel.searchQuery,
+            value = searchQuery,
             onValueChange = { viewModel.searchIngredients(it) },
             placeholder = { Text("Сыр...") },
             modifier = Modifier.fillMaxWidth(),
@@ -89,14 +93,14 @@ fun MainScreen(
                 cursorColor = MaterialTheme.colorScheme.primary,
                 focusedContainerColor = MaterialTheme.colorScheme.surface,
                 unfocusedContainerColor = MaterialTheme.colorScheme.surface
-        ),
+            ),
         )
 
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth().padding(top=6.dp)
+            modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
         ) {
-            items(viewModel.searchResults) { ingredient ->
+            items(searchResults) { ingredient ->
                 AssistChip(
                     shape = CircleShape,
                     border = null,
@@ -120,18 +124,17 @@ fun MainScreen(
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
-            Column() {
+            Column {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.clickable { basketExpanded = !basketExpanded }
                     ) {
                         Text(
-                            text = "${viewModel.basket.size} продукт${productSuffix(viewModel.basket.size)}",
+                            text = "${basket.size} продукт${productSuffix(basket.size)}",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp
@@ -145,7 +148,6 @@ fun MainScreen(
                     }
 
                     Spacer(modifier = Modifier.weight(1f))
-
 
                     Text(
                         text = "Очистить",
@@ -162,11 +164,11 @@ fun MainScreen(
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(1.dp),
-                                modifier = Modifier
+                        modifier = Modifier
                             .padding(top = 4.dp)
                             .fillMaxWidth()
                     ) {
-                        viewModel.basket.forEach { ingredient ->
+                        basket.forEach { ingredient ->
                             AssistChip(
                                 onClick = { viewModel.removeIngredient(ingredient) },
                                 border = null,
@@ -188,16 +190,16 @@ fun MainScreen(
                         }
                     }
                 }
-        }
+            }
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(1.dp)
-                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy( 0.15f))
+                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(0.15f))
             )
 
-        Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = buildAnnotatedString {
                     append("Найдено рецептов: ")
@@ -205,7 +207,7 @@ fun MainScreen(
                         fontWeight = FontWeight.Bold,
                         color = Color.Black
                     )) {
-                        append("${viewModel.recommendedRecipes.size}")
+                        append("${recommendedRecipes.size}")
                     }
                 },
                 fontSize = 14.sp,
@@ -213,13 +215,7 @@ fun MainScreen(
             )
             Spacer(modifier = Modifier.height(6.dp))
 
-
-                Row(modifier = Modifier.padding(16.dp)) {
-
-                }
-
-
-            if (viewModel.recommendedRecipes.isEmpty() && viewModel.basket.isEmpty()) {
+            if (recommendedRecipes.isEmpty() && basket.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -251,7 +247,11 @@ fun MainScreen(
                         .fillMaxSize()
                         .padding(start = 2.dp, end = 2.dp)
                 ) {
-                    items(viewModel.recommendedRecipes) { recipe ->
+                    items(recommendedRecipes) { result ->
+                        val recipe = result.recipe
+                        val aiScore = aiEvaluations[recipe.id]
+                        val isEvaluating = aiEvaluations.containsKey(recipe.id) && aiScore == null
+
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -261,7 +261,6 @@ fun MainScreen(
                             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                         ) {
                             Box(modifier = Modifier.fillMaxWidth()) {
-
                                 Column(modifier = Modifier
                                     .padding(16.dp)
                                     .fillMaxWidth()
@@ -304,24 +303,64 @@ fun MainScreen(
 
                                     Spacer(modifier = Modifier.height(8.dp))
 
-                                    val missingIngredientsNames = recipe.ingredients
-                                        .filter { recipeId -> viewModel.basket.none { it.id == recipeId } }
-                                        .map { id -> viewModel.getIngredientNameById(id) }
+                                    var missingIngredientsNames by remember { mutableStateOf<List<String>>(emptyList()) }
+                                    var substitutedInfo by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
 
-                                    val missingText = if (missingIngredientsNames.isNotEmpty()) {
-                                        "Не хватает: ${missingIngredientsNames.joinToString(", ")}"
-                                    } else {
-                                        ""
+                                    LaunchedEffect(recipe.ingredients, basket) {
+                                        val missingNames = mutableListOf<String>()
+                                        val substitutions = mutableListOf<Pair<String, String>>()
+                                        
+                                        for (recipeIngredientId in recipe.ingredients) {
+                                            val isInBasket = basket.any { it.id == recipeIngredientId }
+                                            if (!isInBasket) {
+                                                val substituteInBasketName = viewModel.getSubstituteInBasket(recipeIngredientId)
+                                                val baseName = viewModel.getIngredientNameById(recipeIngredientId)
+                                                
+                                                if (substituteInBasketName != null) {
+                                                    substitutions.add(baseName to substituteInBasketName)
+                                                } else {
+                                                    missingNames.add(baseName)
+                                                }
+                                            }
+                                        }
+                                        missingIngredientsNames = missingNames
+                                        substitutedInfo = substitutions
                                     }
 
-                                    if (missingText.isNotEmpty()) {
+                                    if (missingIngredientsNames.isNotEmpty()) {
                                         Text(
-                                            text = missingText,
+                                            text = "Не хватает: ${missingIngredientsNames.joinToString(", ")}",
                                             style = MaterialTheme.typography.bodyMedium.copy(
                                                 fontSize = 14.sp,
                                                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                                             )
                                         )
+                                    }
+                                    
+                                    if (substitutedInfo.isNotEmpty()) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            substitutedInfo.forEach { (base, sub) ->
+                                                Box(
+                                                    modifier = Modifier
+                                                        .background(
+                                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                                            shape = RoundedCornerShape(8.dp)
+                                                        )
+                                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "Замена: $base → $sub",
+                                                        style = MaterialTheme.typography.bodySmall.copy(
+                                                            fontSize = 12.sp,
+                                                            color = MaterialTheme.colorScheme.primary,
+                                                            fontWeight = FontWeight.Normal
+                                                        )
+                                                    )
+                                                }
+                                            }
+                                        }
                                     }
 
                                     Spacer(modifier = Modifier.height(8.dp))
@@ -347,26 +386,61 @@ fun MainScreen(
                                     }
                                 }
 
-                                // Процентное кольцо
-                                val percent = if (recipe.ingredients.isNotEmpty()) {
-                                    val matchedCount = viewModel.basket.count { it.id in recipe.ingredients }
-                                    (matchedCount.toFloat() / recipe.ingredients.size.toFloat()) * 100f
-                                } else 0f
-
-                                PercentageCircle(
-                                    percent = percent,
-                                    size = 40.dp,
-                                    strokeWidth = 4.dp,
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
                                     modifier = Modifier
                                         .align(Alignment.TopEnd)
                                         .padding(end = 16.dp, top = 20.dp)
-                                )
+                                ) {
+                                    if (isEvaluating) {
+                                        SkeletonCircle()
+                                    } else {
+                                        val displayPercent = aiScore?.toFloat() ?: (result.matchScore * 100f)
+                                        val color = if (aiScore != null) Color(0xFF2196F3) else MaterialTheme.colorScheme.primary
+                                        
+                                        PercentageCircle(
+                                            percent = displayPercent,
+                                            size = 40.dp,
+                                            strokeWidth = 4.dp,
+                                            primaryColor = color
+                                        )
+                                        
+                                        if (aiScore != null) {
+                                            Text(
+                                                text = "ИИ",
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFF2196F3),
+                                                modifier = Modifier.padding(top = 2.dp)
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
-
-
+        }
     }
-}}
+}
+
+@Composable
+fun SkeletonCircle() {
+    val infiniteTransition = rememberInfiniteTransition(label = "skeleton")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.7f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "alpha"
+    )
+    
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .background(Color.LightGray.copy(alpha = alpha), CircleShape)
+    )
+}

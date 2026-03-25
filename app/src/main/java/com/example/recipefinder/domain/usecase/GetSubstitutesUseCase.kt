@@ -1,13 +1,12 @@
 package com.example.recipefinder.domain.usecase
 
-import com.example.recipefinder.domain.model.Ingredient
 import com.example.recipefinder.domain.repository.IngredientRepository
 import javax.inject.Inject
 
-class GetIngredientByIdUseCase @Inject constructor(
+class GetSubstitutesUseCase @Inject constructor(
     private val repository: IngredientRepository
 ) {
-    suspend fun execute(id: Int): Ingredient? {
-        return repository.getIngredientById(id)
+    suspend fun execute(ingredientId: Int): List<Int> {
+        return repository.getSubstitutesForIngredient(ingredientId)
     }
 }
